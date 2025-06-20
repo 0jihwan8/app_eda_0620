@@ -202,7 +202,7 @@ class Logout:
 # ---------------------
 class EDA:
     def __init__(self):
-        st.title("\ud83d\udcca Population Trends EDA")
+        st.title("Population Trends EDA")
         uploaded = st.file_uploader("데이터셋 업로드 (population_trends.csv)", type="csv")
         if not uploaded:
             st.info("population_trends.csv 파일을 업로드 해주세요.")
@@ -218,31 +218,29 @@ class EDA:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 
-        tabs = st.tabs(["\ud83d\udd22 기초 통계", "\ud83d\udcc5 연도별 추이", "\ud83d\udcc6 지역별 분석", "\ud83d\udd04 변화량 분석", "\ud83c\udf10 시각화"])
+        tabs = st.tabs(["Basic Statistics", "Yearly Trends", "Regional Analysis", "Change Analysis", "Visualization"])
 
         # 1. 기초 통계
         with tabs[0]:
-            st.header("\ud83d\udd22 기초 통계")
-            st.subheader("데이터프레임 정보")
+            st.header("Basic Statistics")
+            st.subheader("DataFrame Info")
             buffer = io.StringIO()
             df.info(buf=buffer)
             st.text(buffer.getvalue())
 
-            st.subheader("기초 통계량")
+            st.subheader("Descriptive Statistics")
             st.dataframe(df.describe())
 
-            st.subheader("샘플 데이터 (상위 5개)")
+            st.subheader("Sample Data (Top 5 Rows)")
             st.dataframe(df.head())
 
         # 2. 연도별 추이
         with tabs[1]:
-            st.header("\ud83d\udcc5 연도별 추이 분석")
+            st.header("Yearly Trends")
             if 'Year' in df.columns and 'Population' in df.columns:
-                # 전국 데이터 필터링
                 national = df[df['Region'] == '전국']
                 national_yearly = national.groupby('Year')['Population'].sum().reset_index()
 
-                # 최근 3년 평균 순증가 계산
                 recent_years = sorted(national_yearly['Year'].unique())[-3:]
                 recent_data = national[national['Year'].isin(recent_years)]
                 recent_births = recent_data.groupby('Year')['출생아수(명)'].sum()
@@ -253,7 +251,6 @@ class EDA:
                 years_to_predict = 2035 - recent_years[-1]
                 predicted_population = last_population + recent_net * years_to_predict
 
-                # 예측 데이터 추가
                 national_yearly = national_yearly.append({"Year": 2035, "Population": predicted_population}, ignore_index=True)
                 national_yearly = national_yearly.sort_values('Year')
 
@@ -266,16 +263,14 @@ class EDA:
                 ax.legend()
                 st.pyplot(fig)
             else:
-                st.warning("Year와 Population 컬럼이 필요합니다.")
+                st.warning("Year and Population columns are required.")
 
         # 3. 지역별 분석
         with tabs[2]:
-            st.header("\ud83d\udcc6 지역별 분석")
+            st.header("Regional Analysis")
             if {'Region', 'Year', 'Population'}.issubset(df.columns):
-                # 전국 제외
                 regional_df = df[df['Region'] != '전국']
 
-                # 한글 -> 영어 변환 (예시)
                 region_map = {
                     '서울': 'Seoul', '부산': 'Busan', '대구': 'Daegu', '인천': 'Incheon', '광주': 'Gwangju',
                     '대전': 'Daejeon', '울산': 'Ulsan', '세종': 'Sejong', '경기': 'Gyeonggi', '강원': 'Gangwon',
@@ -290,8 +285,7 @@ class EDA:
                 pivot = regional_df.pivot(index='Region_en', columns='Year', values='Population')
                 pivot_diff = (pivot[latest_year] - pivot[past_year]) / 1000
 
-                diff_df = pd.DataFrame({'Region': pivot_diff.index, 'Change': pivot_diff.values})
-                diff_df = diff_df.sort_values(by='Change', ascending=False)
+                diff_df = pd.DataFrame({'Region': pivot_diff.index, 'Change': pivot_diff.values}).sort_values(by='Change', ascending=False)
 
                 fig, ax = plt.subplots(figsize=(10,8))
                 sns.barplot(data=diff_df, y='Region', x='Change', ax=ax)
@@ -301,10 +295,8 @@ class EDA:
                     ax.text(v, i, f"{v:,.1f}", va='center')
                 st.pyplot(fig)
 
-                # 변화율 분석
                 pivot_rate = ((pivot[latest_year] - pivot[past_year]) / pivot[past_year]) * 100
-                rate_df = pd.DataFrame({'Region': pivot_rate.index, 'Rate (%)': pivot_rate.values})
-                rate_df = rate_df.sort_values(by='Rate (%)', ascending=False)
+                rate_df = pd.DataFrame({'Region': pivot_rate.index, 'Rate (%)': pivot_rate.values}).sort_values(by='Rate (%)', ascending=False)
 
                 fig2, ax2 = plt.subplots(figsize=(10,8))
                 sns.barplot(data=rate_df, y='Region', x='Rate (%)', ax=ax2)
@@ -314,17 +306,15 @@ class EDA:
                     ax2.text(v, i, f"{v:,.1f}%", va='center')
                 st.pyplot(fig2)
 
-                st.markdown("**Interpretation:** Regions like Sejong, Gyeonggi show significant population growth both in absolute numbers and rates, while some provinces show decline, indicating regional demographic imbalance.")
+                st.markdown("**Interpretation:** Regions like Sejong, Gyeonggi show significant population growth, while others decline, indicating demographic imbalance.")
             else:
-                st.warning("Region, Year, Population 컬럼이 필요합니다.")
+                st.warning("Region, Year, and Population columns are required.")
 
         # 4. 변화량 분석
         with tabs[3]:
-            st.header("\ud83d\udd04 변화량 분석")
+            st.header("Change Analysis")
             if {'Region', 'Year', 'Population'}.issubset(df.columns):
-                regional_df = df[df['Region'] != '전국']
-                regional_df = regional_df.sort_values(['Region', 'Year'])
-
+                regional_df = df[df['Region'] != '전국'].sort_values(['Region', 'Year'])
                 regional_df['Diff'] = regional_df.groupby('Region')['Population'].diff()
                 diff_records = regional_df.dropna(subset=['Diff']).copy()
                 diff_records['Diff_thousand'] = (diff_records['Diff'] / 1000).round(1)
@@ -337,17 +327,14 @@ class EDA:
                     color = 'background-color: #3498db' if val > 0 else 'background-color: #e74c3c'
                     return color
 
-                st.dataframe(
-                    display_df.style.format({'Change (thousand)': '{:,.1f}'}).applymap(highlight, subset=['Change (thousand)'])
-                )
+                st.dataframe(display_df.style.format({'Change (thousand)': '{:,.1f}'}).applymap(highlight, subset=['Change (thousand)']))
             else:
-                st.warning("Region, Year, Population 컬럼이 필요합니다.")
+                st.warning("Region, Year, and Population columns are required.")
 
-        # 5. 시각화 (누적 영역 그래프)
+        # 5. 시각화
         with tabs[4]:
-            st.header("\ud83c\udf10 Visualization (Stacked Area)")
+            st.header("Visualization (Stacked Area)")
             if {'Region', 'Year', 'Population'}.issubset(df.columns):
-                # 한글 -> 영어 변환
                 region_map = {
                     '서울': 'Seoul', '부산': 'Busan', '대구': 'Daegu', '인천': 'Incheon', '광주': 'Gwangju',
                     '대전': 'Daejeon', '울산': 'Ulsan', '세종': 'Sejong', '경기': 'Gyeonggi', '강원': 'Gangwon',
@@ -359,7 +346,6 @@ class EDA:
                 pivot_df = df.pivot_table(index='Year', columns='Region_en', values='Population', aggfunc='sum').fillna(0)
                 pivot_df = pivot_df.drop(columns=['Total'], errors='ignore')
 
-                # 누적 영역 그래프
                 plt.figure(figsize=(12, 8))
                 colors = sns.color_palette("tab20", n_colors=pivot_df.shape[1])
                 pivot_df.plot.area(color=colors)
@@ -369,7 +355,7 @@ class EDA:
                 plt.legend(title="Region", loc="upper left")
                 st.pyplot(plt.gcf())
             else:
-                st.warning("Region, Year, Population 컬럼이 필요합니다.")
+                st.warning("Region, Year, and Population columns are required.")
 
 
 
