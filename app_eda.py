@@ -203,24 +203,34 @@ class Logout:
 class EDA:
     def __init__(self):
         st.title("Population Trends EDA")
-        uploaded = st.file_uploader("데이터셋 업로드 (population_trends.csv)", type="csv")
+        uploaded = st.file_uploader("Upload Dataset (population_trends.csv)", type="csv")
         if not uploaded:
-            st.info("population_trends.csv 파일을 업로드 해주세요.")
+            st.info("Please upload population_trends.csv file.")
             return
 
         df = pd.read_csv(uploaded)
 
-        # 전처리 수행: 세종 지역 결측치 처리 및 숫자 변환
+        # 컬럼명 한글 -> 영문 변환
+        df.rename(columns={
+            '연도': 'Year',
+            '지역': 'Region',
+            '인구': 'Population',
+            '출생아수(명)': 'Births',
+            '사망자수(명)': 'Deaths'
+        }, inplace=True)
+
+        # 세종 지역 결측치 '-' 를 0으로 변환
         df.replace('-', np.nan, inplace=True)
         df.loc[df['Region'] == '세종'] = df.loc[df['Region'] == '세종'].fillna('0')
 
-        for col in ['Population', '출생아수(명)', '사망자수(명)']:
+        # 숫자형 변환
+        for col in ['Population', 'Births', 'Deaths']:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 
         tabs = st.tabs(["Basic Statistics", "Yearly Trends", "Regional Analysis", "Change Analysis", "Visualization"])
 
-        # 1. 기초 통계
+        # 1. Basic Statistics
         with tabs[0]:
             st.header("Basic Statistics")
             st.subheader("DataFrame Info")
@@ -234,128 +244,113 @@ class EDA:
             st.subheader("Sample Data (Top 5 Rows)")
             st.dataframe(df.head())
 
-        # 2. 연도별 추이
+        # 2. Yearly Trends
         with tabs[1]:
             st.header("Yearly Trends")
-            if 'Year' in df.columns and 'Population' in df.columns:
-                national = df[df['Region'] == '전국']
-                national_yearly = national.groupby('Year')['Population'].sum().reset_index()
+            national = df[df['Region'] == '전국']
+            national_yearly = national.groupby('Year')['Population'].sum().reset_index()
 
-                recent_years = sorted(national_yearly['Year'].unique())[-3:]
-                recent_data = national[national['Year'].isin(recent_years)]
-                recent_births = recent_data.groupby('Year')['출생아수(명)'].sum()
-                recent_deaths = recent_data.groupby('Year')['사망자수(명)'].sum()
-                recent_net = (recent_births - recent_deaths).mean()
+            recent_years = sorted(national_yearly['Year'].unique())[-3:]
+            recent_data = national[national['Year'].isin(recent_years)]
+            recent_births = recent_data.groupby('Year')['Births'].sum()
+            recent_deaths = recent_data.groupby('Year')['Deaths'].sum()
+            recent_net = (recent_births - recent_deaths).mean()
 
-                last_population = national_yearly[national_yearly['Year'] == recent_years[-1]]['Population'].values[0]
-                years_to_predict = 2035 - recent_years[-1]
-                predicted_population = last_population + recent_net * years_to_predict
+            last_population = national_yearly[national_yearly['Year'] == recent_years[-1]]['Population'].values[0]
+            years_to_predict = 2035 - recent_years[-1]
+            predicted_population = last_population + recent_net * years_to_predict
 
-                national_yearly = national_yearly.append({"Year": 2035, "Population": predicted_population}, ignore_index=True)
-                national_yearly = national_yearly.sort_values('Year')
+            national_yearly = national_yearly.append({"Year": 2035, "Population": predicted_population}, ignore_index=True)
+            national_yearly = national_yearly.sort_values('Year')
 
-                fig, ax = plt.subplots()
-                sns.lineplot(data=national_yearly, x='Year', y='Population', marker='o', ax=ax)
-                ax.set_title('Total Population Trend')
-                ax.set_xlabel('Year')
-                ax.set_ylabel('Population')
-                ax.scatter(2035, predicted_population, color='red', label='Predicted 2035')
-                ax.legend()
-                st.pyplot(fig)
-            else:
-                st.warning("Year and Population columns are required.")
+            fig, ax = plt.subplots()
+            sns.lineplot(data=national_yearly, x='Year', y='Population', marker='o', ax=ax)
+            ax.set_title('Total Population Trend')
+            ax.set_xlabel('Year')
+            ax.set_ylabel('Population')
+            ax.scatter(2035, predicted_population, color='red', label='Predicted 2035')
+            ax.legend()
+            st.pyplot(fig)
 
-        # 3. 지역별 분석
+        # 3. Regional Analysis
         with tabs[2]:
             st.header("Regional Analysis")
-            if {'Region', 'Year', 'Population'}.issubset(df.columns):
-                regional_df = df[df['Region'] != '전국']
+            regional_df = df[df['Region'] != '전국']
 
-                region_map = {
-                    '서울': 'Seoul', '부산': 'Busan', '대구': 'Daegu', '인천': 'Incheon', '광주': 'Gwangju',
-                    '대전': 'Daejeon', '울산': 'Ulsan', '세종': 'Sejong', '경기': 'Gyeonggi', '강원': 'Gangwon',
-                    '충북': 'Chungbuk', '충남': 'Chungnam', '전북': 'Jeonbuk', '전남': 'Jeonnam', '경북': 'Gyeongbuk',
-                    '경남': 'Gyeongnam', '제주': 'Jeju'
-                }
-                regional_df['Region_en'] = regional_df['Region'].map(region_map)
+            region_map = {
+                '서울': 'Seoul', '부산': 'Busan', '대구': 'Daegu', '인천': 'Incheon', '광주': 'Gwangju',
+                '대전': 'Daejeon', '울산': 'Ulsan', '세종': 'Sejong', '경기': 'Gyeonggi', '강원': 'Gangwon',
+                '충북': 'Chungbuk', '충남': 'Chungnam', '전북': 'Jeonbuk', '전남': 'Jeonnam', '경북': 'Gyeongbuk',
+                '경남': 'Gyeongnam', '제주': 'Jeju'
+            }
+            regional_df['Region_en'] = regional_df['Region'].map(region_map)
 
-                latest_year = regional_df['Year'].max()
-                past_year = latest_year - 5
+            latest_year = regional_df['Year'].max()
+            past_year = latest_year - 5
 
-                pivot = regional_df.pivot(index='Region_en', columns='Year', values='Population')
-                pivot_diff = (pivot[latest_year] - pivot[past_year]) / 1000
+            pivot = regional_df.pivot(index='Region_en', columns='Year', values='Population')
+            pivot_diff = (pivot[latest_year] - pivot[past_year]) / 1000
+            diff_df = pd.DataFrame({'Region': pivot_diff.index, 'Change': pivot_diff.values}).sort_values(by='Change', ascending=False)
 
-                diff_df = pd.DataFrame({'Region': pivot_diff.index, 'Change': pivot_diff.values}).sort_values(by='Change', ascending=False)
+            fig, ax = plt.subplots(figsize=(10,8))
+            sns.barplot(data=diff_df, y='Region', x='Change', ax=ax)
+            ax.set_title('5-Year Population Change')
+            ax.set_xlabel('Change (thousand)')
+            for i, v in enumerate(diff_df['Change']):
+                ax.text(v, i, f"{v:,.1f}", va='center')
+            st.pyplot(fig)
 
-                fig, ax = plt.subplots(figsize=(10,8))
-                sns.barplot(data=diff_df, y='Region', x='Change', ax=ax)
-                ax.set_title('5-Year Population Change')
-                ax.set_xlabel('Change (thousand)')
-                for i, v in enumerate(diff_df['Change']):
-                    ax.text(v, i, f"{v:,.1f}", va='center')
-                st.pyplot(fig)
+            pivot_rate = ((pivot[latest_year] - pivot[past_year]) / pivot[past_year]) * 100
+            rate_df = pd.DataFrame({'Region': pivot_rate.index, 'Rate (%)': pivot_rate.values}).sort_values(by='Rate (%)', ascending=False)
 
-                pivot_rate = ((pivot[latest_year] - pivot[past_year]) / pivot[past_year]) * 100
-                rate_df = pd.DataFrame({'Region': pivot_rate.index, 'Rate (%)': pivot_rate.values}).sort_values(by='Rate (%)', ascending=False)
+            fig2, ax2 = plt.subplots(figsize=(10,8))
+            sns.barplot(data=rate_df, y='Region', x='Rate (%)', ax=ax2)
+            ax2.set_title('5-Year Population Change Rate')
+            ax2.set_xlabel('Rate (%)')
+            for i, v in enumerate(rate_df['Rate (%)']):
+                ax2.text(v, i, f"{v:,.1f}%", va='center')
+            st.pyplot(fig2)
 
-                fig2, ax2 = plt.subplots(figsize=(10,8))
-                sns.barplot(data=rate_df, y='Region', x='Rate (%)', ax=ax2)
-                ax2.set_title('5-Year Population Change Rate')
-                ax2.set_xlabel('Rate (%)')
-                for i, v in enumerate(rate_df['Rate (%)']):
-                    ax2.text(v, i, f"{v:,.1f}%", va='center')
-                st.pyplot(fig2)
-
-                st.markdown("**Interpretation:** Regions like Sejong, Gyeonggi show significant population growth, while others decline, indicating demographic imbalance.")
-            else:
-                st.warning("Region, Year, and Population columns are required.")
-
-        # 4. 변화량 분석
+        # 4. Change Analysis
         with tabs[3]:
             st.header("Change Analysis")
-            if {'Region', 'Year', 'Population'}.issubset(df.columns):
-                regional_df = df[df['Region'] != '전국'].sort_values(['Region', 'Year'])
-                regional_df['Diff'] = regional_df.groupby('Region')['Population'].diff()
-                diff_records = regional_df.dropna(subset=['Diff']).copy()
-                diff_records['Diff_thousand'] = (diff_records['Diff'] / 1000).round(1)
-                diff_records['Diff_fmt'] = diff_records['Diff_thousand'].map(lambda x: f"{x:,.1f}")
+            regional_df = df[df['Region'] != '전국'].sort_values(['Region', 'Year'])
+            regional_df['Diff'] = regional_df.groupby('Region')['Population'].diff()
+            diff_records = regional_df.dropna(subset=['Diff']).copy()
+            diff_records['Diff_thousand'] = (diff_records['Diff'] / 1000).round(1)
+            diff_records['Diff_fmt'] = diff_records['Diff_thousand'].map(lambda x: f"{x:,.1f}")
 
-                top_diff = diff_records.sort_values(by='Diff_thousand', ascending=False).head(100)
-                display_df = top_diff[['Region', 'Year', 'Diff_thousand']].rename(columns={'Region': 'Region', 'Year': 'Year', 'Diff_thousand': 'Change (thousand)'}).reset_index(drop=True)
+            top_diff = diff_records.sort_values(by='Diff_thousand', ascending=False).head(100)
+            display_df = top_diff[['Region', 'Year', 'Diff_thousand']].rename(columns={'Region': 'Region', 'Year': 'Year', 'Diff_thousand': 'Change (thousand)'}).reset_index(drop=True)
 
-                def highlight(val):
-                    color = 'background-color: #3498db' if val > 0 else 'background-color: #e74c3c'
-                    return color
+            def highlight(val):
+                color = 'background-color: #3498db' if val > 0 else 'background-color: #e74c3c'
+                return color
 
-                st.dataframe(display_df.style.format({'Change (thousand)': '{:,.1f}'}).applymap(highlight, subset=['Change (thousand)']))
-            else:
-                st.warning("Region, Year, and Population columns are required.")
+            st.dataframe(display_df.style.format({'Change (thousand)': '{:,.1f}'}).applymap(highlight, subset=['Change (thousand)']))
 
-        # 5. 시각화
+        # 5. Visualization
         with tabs[4]:
             st.header("Visualization (Stacked Area)")
-            if {'Region', 'Year', 'Population'}.issubset(df.columns):
-                region_map = {
-                    '서울': 'Seoul', '부산': 'Busan', '대구': 'Daegu', '인천': 'Incheon', '광주': 'Gwangju',
-                    '대전': 'Daejeon', '울산': 'Ulsan', '세종': 'Sejong', '경기': 'Gyeonggi', '강원': 'Gangwon',
-                    '충북': 'Chungbuk', '충남': 'Chungnam', '전북': 'Jeonbuk', '전남': 'Jeonnam', '경북': 'Gyeongbuk',
-                    '경남': 'Gyeongnam', '제주': 'Jeju', '전국': 'Total'
-                }
-                df['Region_en'] = df['Region'].map(region_map)
+            df['Region_en'] = df['Region'].map({
+                '서울': 'Seoul', '부산': 'Busan', '대구': 'Daegu', '인천': 'Incheon', '광주': 'Gwangju',
+                '대전': 'Daejeon', '울산': 'Ulsan', '세종': 'Sejong', '경기': 'Gyeonggi', '강원': 'Gangwon',
+                '충북': 'Chungbuk', '충남': 'Chungnam', '전북': 'Jeonbuk', '전남': 'Jeonnam', '경북': 'Gyeongbuk',
+                '경남': 'Gyeongnam', '제주': 'Jeju', '전국': 'Total'
+            })
 
-                pivot_df = df.pivot_table(index='Year', columns='Region_en', values='Population', aggfunc='sum').fillna(0)
-                pivot_df = pivot_df.drop(columns=['Total'], errors='ignore')
+            pivot_df = df.pivot_table(index='Year', columns='Region_en', values='Population', aggfunc='sum').fillna(0)
+            pivot_df = pivot_df.drop(columns=['Total'], errors='ignore')
 
-                plt.figure(figsize=(12, 8))
-                colors = sns.color_palette("tab20", n_colors=pivot_df.shape[1])
-                pivot_df.plot.area(color=colors)
-                plt.title("Population Trends by Region")
-                plt.xlabel("Year")
-                plt.ylabel("Population")
-                plt.legend(title="Region", loc="upper left")
-                st.pyplot(plt.gcf())
-            else:
-                st.warning("Region, Year, and Population columns are required.")
+            plt.figure(figsize=(12, 8))
+            colors = sns.color_palette("tab20", n_colors=pivot_df.shape[1])
+            pivot_df.plot.area(color=colors)
+            plt.title("Population Trends by Region")
+            plt.xlabel("Year")
+            plt.ylabel("Population")
+            plt.legend(title="Region", loc="upper left")
+            st.pyplot(plt.gcf())
+
 
 
 
