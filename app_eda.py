@@ -260,8 +260,8 @@ class EDA:
             years_to_predict = 2035 - recent_years[-1]
             predicted_population = last_population + recent_net * years_to_predict
 
-            national_yearly = national_yearly.append({"Year": 2035, "Population": predicted_population}, ignore_index=True)
-            national_yearly = national_yearly.sort_values('Year')
+            new_row = pd.DataFrame([{"Year": 2035, "Population": predicted_population}])
+            national_yearly = pd.concat([national_yearly, new_row], ignore_index=True).sort_values('Year')
 
             fig, ax = plt.subplots()
             sns.lineplot(data=national_yearly, x='Year', y='Population', marker='o', ax=ax)
