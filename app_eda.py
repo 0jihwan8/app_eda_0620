@@ -42,26 +42,27 @@ if "logged_in" not in st.session_state:
 # ---------------------
 class Home:
     def __init__(self, login_page, register_page, findpw_page):
-        st.title("🏠 Home")
+        st.title("Population Trends EDA")
         if st.session_state.get("logged_in"):
             st.success(f"{st.session_state.get('user_email')}님 환영합니다.")
 
-        # Kaggle 데이터셋 출처 및 소개
         st.markdown("""
-                ---
-                **Bike Sharing Demand 데이터셋**  
-                - 제공처: [Kaggle Bike Sharing Demand Competition](https://www.kaggle.com/c/bike-sharing-demand)  
-                - 설명: 2011–2012년 캘리포니아 주의 수도인 미국 워싱턴 D.C. 인근 도시에서 시간별 자전거 대여량을 기록한 데이터  
-                - 주요 변수:  
-                  - `datetime`: 날짜 및 시간  
-                  - `season`: 계절  
-                  - `holiday`: 공휴일 여부  
-                  - `workingday`: 근무일 여부  
-                  - `weather`: 날씨 상태  
-                  - `temp`, `atemp`: 기온 및 체감온도  
-                  - `humidity`, `windspeed`: 습도 및 풍속  
-                  - `casual`, `registered`, `count`: 비등록·등록·전체 대여 횟수  
-                """)
+            ---
+            **Population Trends 데이터셋**  
+            - 데이터 개요: 한국의 연도별, 지역별 인구, 출생아수, 사망자수 데이터를 포함합니다.
+            - 주요 변수:  
+              - `Year`: 연도  
+              - `Region`: 지역명  
+              - `Population`: 총 인구 수  
+              - `Births`: 출생아 수  
+              - `Deaths`: 사망자 수  
+            - 목적:  
+              - 연도별, 지역별 인구 변화 추이 분석  
+              - 5년간 변화량, 변화율 분석  
+              - 예측을 통한 향후 인구 추정  
+              - 시각적 탐색을 통한 인사이트 도출
+        """)
+
 
 # ---------------------
 # 로그인 페이지 클래스
