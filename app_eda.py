@@ -230,7 +230,7 @@ class EDA:
 
         tabs = st.tabs(["Basic Statistics", "Yearly Trends", "Regional Analysis", "Change Analysis", "Visualization"])
 
-        # 1. Basic Statistics
+        # 1. 기초 통계
         with tabs[0]:
             st.header("Basic Statistics")
             st.subheader("DataFrame Info")
@@ -244,7 +244,7 @@ class EDA:
             st.subheader("Sample Data (Top 5 Rows)")
             st.dataframe(df.head())
 
-        # 2. Yearly Trends
+        # 2. 연도별 추이
         with tabs[1]:
             st.header("Yearly Trends")
             national = df[df['Region'] == '전국']
@@ -272,7 +272,7 @@ class EDA:
             ax.legend()
             st.pyplot(fig)
 
-        # 3. Regional Analysis
+        # 3. 지역별 분석
         with tabs[2]:
             st.header("Regional Analysis")
             regional_df = df[df['Region'] != '전국']
@@ -311,7 +311,7 @@ class EDA:
                 ax2.text(v, i, f"{v:,.1f}%", va='center')
             st.pyplot(fig2)
 
-        # 4. Change Analysis
+        # 4. 변화량 분석
         with tabs[3]:
             st.header("Change Analysis")
             regional_df = df[df['Region'] != '전국'].sort_values(['Region', 'Year'])
@@ -329,7 +329,7 @@ class EDA:
 
             st.dataframe(display_df.style.format({'Change (thousand)': '{:,.1f}'}).applymap(highlight, subset=['Change (thousand)']))
 
-        # 5. Visualization
+        # 5. 시각화
         with tabs[4]:
             st.header("Visualization (Stacked Area)")
             df['Region_en'] = df['Region'].map({
